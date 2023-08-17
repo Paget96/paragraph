@@ -3,13 +3,15 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.js$/,
+        test: /\.(?:js|mjs|cjs)$/,
         exclude: /node_modules/,
         use: [
           {
             loader: 'babel-loader',
-            query: {
-              presets: [ '@babel/preset-env' ],
+            options: {
+              presets: [
+                ['@babel/preset-env', { targets: "defaults" }]
+            ],
             },
           },
         ]
