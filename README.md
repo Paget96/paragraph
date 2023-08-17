@@ -75,13 +75,14 @@ The Paragraph Tool supports these configuration parameters:
 | Field  | Type     | Description      |
 | ------ | -------- | ---------------- |
 | text   | `string` | paragraph's text |
-
+| alignment | `left|center|right|justify` | paragraph's alignment |
 
 ```json
 {
     "type" : "paragraph",
     "data" : {
         "text" : "Check out our projects on a <a href=\"https://github.com/codex-team\">GitHub page</a>.",
+        "alignment": "left"
     }
 }
 ```

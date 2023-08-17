@@ -37,6 +37,31 @@ export default class Paragraph {
   }
 
   /**
+  * Allowed paragraph alignments
+  *
+  * @public
+  * @returns {{left: string, center: string}}
+ */
+  static get ALIGNMENTS() {
+    return {
+      left: 'left',
+      center: 'center',
+      right: 'right',
+      justify: 'justify',
+    };
+  }
+
+  /**
+   * Default paragraph alignment
+   *
+   * @public
+   * @returns {string}
+   */
+  static get DEFAULT_ALIGNMENT() {
+    return Paragraph.ALIGNMENTS.left;
+  }
+
+  /**
    * Render plugin`s main Element and fill it with saved data
    *
    * @param {object} params - constructor params
@@ -48,10 +73,18 @@ export default class Paragraph {
   constructor({ data, config, api, readOnly }) {
     this.api = api;
     this.readOnly = readOnly;
+    this.config = config;
 
     this._CSS = {
       block: this.api.styles.block,
       wrapper: 'ce-paragraph',
+      settingsButtonActive: this.api.styles.settingsButtonActive,
+      alignment: {
+        left: 'ce-paragraph--left',
+        center: 'ce-paragraph--center',
+        right: 'ce-paragraph--right',
+        justify: 'ce-paragraph--justify',
+      }
     };
 
     if (!this.readOnly) {
@@ -64,7 +97,29 @@ export default class Paragraph {
      * @type {string}
      */
     this._placeholder = config.placeholder ? config.placeholder : Paragraph.DEFAULT_PLACEHOLDER;
-    this._data = {};
+    this._data = {
+      text: data.text || '',
+      alignment: data.alignment || config.defaultAlignment || Paragraph.DEFAULT_ALIGNMENT
+    };
+    this._tunesButtons = [
+      {
+        name: 'left',
+        icon: require('./tune-left-icon.svg').default
+      },
+      {
+        name: 'center',
+        icon: require('./tune-center-icon.svg').default
+      },
+      {
+        name: 'right',
+        icon: require('./tune-right-icon.svg').default
+      },
+      {
+        name: 'justify',
+        icon: require('./tune-justify-icon.svg').default
+      }
+    ];
+
     this._element = null;
     this._preserveBlank = config.preserveBlank !== undefined ? config.preserveBlank : false;
 
@@ -98,10 +153,8 @@ export default class Paragraph {
   drawView() {
     const div = document.createElement('DIV');
 
-    div.classList.add(this._CSS.wrapper, this._CSS.block);
-    div.contentEditable = false;
+    div.classList.add(this._CSS.wrapper, this._CSS.block, this._CSS.alignment[this._data.alignment]); div.contentEditable = false;
     div.dataset.placeholder = this.api.i18n.t(this._placeholder);
-
     if (!this.readOnly) {
       div.contentEditable = true;
       div.addEventListener('keyup', this.onKeyUp);
@@ -134,7 +187,8 @@ export default class Paragraph {
    */
   merge(data) {
     const newData = {
-      text : this.data.text + data.text,
+      text: this.data.text + data.text,
+      alignment: this.data.alignment,
     };
 
     this.data = newData;
@@ -157,6 +211,48 @@ export default class Paragraph {
   }
 
   /**
+   * Renders tunes buttons
+   */
+  renderSettings() {
+    const wrapper = document.createElement('div');
+    this._tunesButtons.map(tune => {
+      const button = document.createElement('div');
+      button.classList.add('cdx-settings-button');
+      button.innerHTML = tune.icon;
+      // if we pass default alignment on config tool, it must display activated because
+      // isn't the default lifecycle
+      button.classList.toggle(this._CSS.settingsButtonActive, tune.name === (this.data.alignment || this.config.defaultAlignment));
+      wrapper.appendChild(button);
+      return button;
+    }).forEach((element, index, elements) => {
+      element.addEventListener('click', () => {
+        this._toggleTune(this._tunesButtons[index].name);
+        elements.forEach((el, i) => {
+          const { name } = this._tunesButtons[i];
+          el.classList.toggle(this._CSS.settingsButtonActive, name === this.data.alignment);
+          this._element.classList.toggle(this._CSS.alignment[name], name === this.data.alignment)
+        });
+      });
+    });
+
+    return wrapper;
+  }
+
+  /**
+* @private
+* Click on the Settings Button
+* If the same alignment is clicked, we reset to default status
+* @param {string} tune — tune name from this.settings
+*/
+  _toggleTune(tune) {
+    if (this.data.alignment === tune) {
+      this.data.alignment = this.config.defaultAlignment;
+    } else {
+      this.data.alignment = tune;
+    }
+  }
+
+  /**
    * Extract Tool's data from the view
    *
    * @param {HTMLDivElement} toolsContent - Paragraph tools rendered view
@@ -166,6 +262,7 @@ export default class Paragraph {
   save(toolsContent) {
     return {
       text: toolsContent.innerHTML,
+      alignment: this.data.alignment,
     };
   }
 
@@ -177,6 +274,7 @@ export default class Paragraph {
   onPaste(event) {
     const data = {
       text: event.detail.data.innerHTML,
+      alignment: event.detail.data.style.textAlign || this.config.defaultAlignment || Paragraph.DEFAULT_ALIGNMENT,
     };
 
     this.data = data;
@@ -247,7 +345,7 @@ export default class Paragraph {
   /**
    * Fill tool's view with data
    */
-  hydrate(){
+  hydrate() {
     window.requestAnimationFrame(() => {
       this._element.innerHTML = this._data.text || '';
     });
@@ -261,7 +359,7 @@ export default class Paragraph {
    */
   static get pasteConfig() {
     return {
-      tags: [ 'P' ],
+      tags: ['p'],
     };
   }
 
